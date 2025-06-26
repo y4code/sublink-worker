@@ -1,26 +1,54 @@
-import { SingboxConfigBuilder } from './SingboxConfigBuilder.js';
-import { generateHtml } from './htmlBuilder.js';
-import { ClashConfigBuilder } from './ClashConfigBuilder.js';
-import { SurgeConfigBuilder } from './SurgeConfigBuilder.js';
-import { decodeBase64, encodeBase64, GenerateWebPath } from './utils.js';
-import { PREDEFINED_RULE_SETS } from './config.js';
-import { t, setLanguage } from './i18n/index.js';
+import express from 'express';
+import cors from 'cors';
+import NodeCache from 'node-cache';
+import { SingboxConfigBuilder } from './src/SingboxConfigBuilder.js';
+import { generateHtml } from './src/htmlBuilder.js';
+import { ClashConfigBuilder } from './src/ClashConfigBuilder.js';
+import { SurgeConfigBuilder } from './src/SurgeConfigBuilder.js';
+import { decodeBase64, encodeBase64, GenerateWebPath } from './src/utils.js';
+import { PREDEFINED_RULE_SETS } from './src/config.js';
+import { t, setLanguage } from './src/i18n/index.js';
 import yaml from 'js-yaml';
 
-addEventListener('fetch', event => {
-  event.respondWith(handleRequest(event.request))
-})
+const app = express();
+const port = process.env.PORT || 3000;
 
+// 创建本地缓存替代Cloudflare KV
+const cache = new NodeCache({ 
+  stdTTL: 86400, // 默认24小时过期
+  checkperiod: 3600 // 每小时检查过期项
+});
+
+// 中间件
+app.use(cors());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// 模拟SUBLINK_KV接口
+const SUBLINK_KV = {
+  get: async (key) => {
+    return cache.get(key) || null;
+  },
+  put: async (key, value, options = {}) => {
+    const ttl = options.expirationTtl || 86400; // 默认24小时
+    cache.set(key, value, ttl);
+  }
+};
+
+// 主要的请求处理函数，从原来的Worker代码移植
 async function handleRequest(request) {
   try {
     const url = new URL(request.url);
     const lang = url.searchParams.get('lang');
     setLanguage(lang || request.headers.get('accept-language')?.split(',')[0]);
+    
     if (request.method === 'GET' && url.pathname === '/') {
       // Return the HTML form for GET requests
-      return new Response(generateHtml('', '', '', '', url.origin), {
-        headers: { 'Content-Type': 'text/html' }
-      });
+      return {
+        status: 200,
+        headers: { 'Content-Type': 'text/html' },
+        body: generateHtml('', '', '', '', url.origin)
+      };
     } else if (url.pathname.startsWith('/singbox') || url.pathname.startsWith('/clash') || url.pathname.startsWith('/surge')) {
       const inputString = url.searchParams.get('config');
       let selectedRules = url.searchParams.get('selectedRules');
@@ -34,7 +62,7 @@ async function handleRequest(request) {
       }
 
       if (!inputString) {
-        return new Response(t('missingConfig'), { status: 400 });
+        return { status: 400, body: t('missingConfig') };
       }
 
       if (PREDEFINED_RULE_SETS[selectedRules]) {
@@ -92,31 +120,34 @@ async function handleRequest(request) {
         headers['subscription-userinfo'] = 'upload=0; download=0; total=10737418240; expire=2546249531';
       }
 
-      return new Response(
-        url.pathname.startsWith('/singbox') ? JSON.stringify(config, null, 2) : config,
-        { headers }
-      );
+      return {
+        status: 200,
+        headers,
+        body: url.pathname.startsWith('/singbox') ? JSON.stringify(config, null, 2) : config
+      };
 
     } else if (url.pathname === '/shorten') {
       const originalUrl = url.searchParams.get('url');
       if (!originalUrl) {
-        return new Response(t('missingUrl'), { status: 400 });
+        return { status: 400, body: t('missingUrl') };
       }
 
       const shortCode = GenerateWebPath();
       await SUBLINK_KV.put(shortCode, originalUrl);
 
       const shortUrl = `${url.origin}/s/${shortCode}`;
-      return new Response(JSON.stringify({ shortUrl }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shortUrl })
+      };
 
     } else if (url.pathname === '/shorten-v2') {
       const originalUrl = url.searchParams.get('url');
       let shortCode = url.searchParams.get('shortCode');
 
       if (!originalUrl) {
-        return new Response('Missing URL parameter', { status: 400 });
+        return { status: 400, body: 'Missing URL parameter' };
       }
 
       // Create a URL object to correctly parse the original URL
@@ -129,9 +160,11 @@ async function handleRequest(request) {
 
       await SUBLINK_KV.put(shortCode, queryString);
 
-      return new Response(shortCode, {
-        headers: { 'Content-Type': 'text/plain' }
-      });
+      return {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain' },
+        body: shortCode
+      };
 
     } else if (url.pathname.startsWith('/b/') || url.pathname.startsWith('/c/') || url.pathname.startsWith('/x/') || url.pathname.startsWith('/s/')) {
       const shortCode = url.pathname.split('/')[2];
@@ -148,11 +181,11 @@ async function handleRequest(request) {
         originalUrl = `${url.origin}/surge${originalParam}`;
       }
 
-      if (originalUrl === null) {
-        return new Response(t('shortUrlNotFound'), { status: 404 });
+      if (originalParam === null) {
+        return { status: 404, body: t('shortUrlNotFound') };
       }
 
-      return Response.redirect(originalUrl, 302);
+      return { status: 302, redirect: originalUrl };
     } else if (url.pathname.startsWith('/xray')) {
       // Handle Xray config requests
       const inputString = url.searchParams.get('config');
@@ -164,17 +197,17 @@ async function handleRequest(request) {
       if (!userAgent) {
         userAgent = 'curl/7.74.0';
       }
-      let headers = new Headers({
-        "User-Agent"   : userAgent
-      });
+      let headers = {
+        "User-Agent": userAgent
+      };
 
       for (const proxy of proxylist) {
         if (proxy.startsWith('http://') || proxy.startsWith('https://')) {
           try {
             const response = await fetch(proxy, {
-              method : 'GET',
-              headers : headers
-            })
+              method: 'GET',
+              headers: headers
+            });
             const text = await response.text();
             let decodedText;
             decodedText = decodeBase64(text.trim());
@@ -194,58 +227,23 @@ async function handleRequest(request) {
       const finalString = finalProxyList.join('\n');
 
       if (!finalString) {
-        return new Response('Missing config parameter', { status: 400 });
+        return { status: 400, body: 'Missing config parameter' };
       }
 
-      return new Response(encodeBase64(finalString), {
-        headers: { 'content-type': 'application/json; charset=utf-8' }
-      });
+      return {
+        status: 200,
+        headers: { 'content-type': 'application/json; charset=utf-8' },
+        body: encodeBase64(finalString)
+      };
     } else if (url.pathname === '/favicon.ico') {
-      return Response.redirect('https://cravatar.cn/avatar/9240d78bbea4cf05fb04f2b86f22b18d?s=160&d=retro&r=g', 301)
+      return { status: 301, redirect: 'https://cravatar.cn/avatar/9240d78bbea4cf05fb04f2b86f22b18d?s=160&d=retro&r=g' };
     } else if (url.pathname === '/config') {
-      const { type, content } = await request.json();
-      const configId = `${type}_${GenerateWebPath(8)}`;
-
-      try {
-        let configString;
-        if (type === 'clash') {
-          // 如果是 YAML 格式，先转换为 JSON
-          if (typeof content === 'string' && (content.trim().startsWith('-') || content.includes(':'))) {
-            const yamlConfig = yaml.load(content);
-            configString = JSON.stringify(yamlConfig);
-          } else {
-            configString = typeof content === 'object'
-              ? JSON.stringify(content)
-              : content;
-          }
-        } else {
-          // singbox 配置处理
-          configString = typeof content === 'object'
-            ? JSON.stringify(content)
-            : content;
-        }
-
-        // 验证 JSON 格式
-        JSON.parse(configString);
-
-        await SUBLINK_KV.put(configId, configString, {
-          expirationTtl: 60 * 60 * 24 * 30  // 30 days
-        });
-
-        return new Response(configId, {
-          headers: { 'Content-Type': 'text/plain' }
-        });
-      } catch (error) {
-        console.error('Config validation error:', error);
-        return new Response(t('invalidFormat') + error.message, {
-          status: 400,
-          headers: { 'Content-Type': 'text/plain' }
-        });
-      }
+      // This would be handled by POST request
+      return { status: 405, body: 'Method not allowed' };
     } else if (url.pathname === '/resolve') {
       const shortUrl = url.searchParams.get('url');
       if (!shortUrl) {
-        return new Response(t('missingUrl'), { status: 400 });
+        return { status: 400, body: t('missingUrl') };
       }
 
       try {
@@ -253,19 +251,19 @@ async function handleRequest(request) {
         const pathParts = urlObj.pathname.split('/');
         
         if (pathParts.length < 3) {
-          return new Response(t('invalidShortUrl'), { status: 400 });
+          return { status: 400, body: t('invalidShortUrl') };
         }
 
         const prefix = pathParts[1]; // b, c, x, s
         const shortCode = pathParts[2];
 
         if (!['b', 'c', 'x', 's'].includes(prefix)) {
-          return new Response(t('invalidShortUrl'), { status: 400 });
+          return { status: 400, body: t('invalidShortUrl') };
         }
 
         const originalParam = await SUBLINK_KV.get(shortCode);
         if (originalParam === null) {
-          return new Response(t('shortUrlNotFound'), { status: 404 });
+          return { status: 404, body: t('shortUrlNotFound') };
         }
 
         let originalUrl;
@@ -279,17 +277,95 @@ async function handleRequest(request) {
           originalUrl = `${url.origin}/surge${originalParam}`;
         }
 
-        return new Response(JSON.stringify({ originalUrl }), {
-          headers: { 'Content-Type': 'application/json' }
-        });
+        return {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ originalUrl })
+        };
       } catch (error) {
-        return new Response(t('invalidShortUrl'), { status: 400 });
+        return { status: 400, body: t('invalidShortUrl') };
       }
     }
 
-    return new Response(t('notFound'), { status: 404 });
+    return { status: 404, body: t('notFound') };
   } catch (error) {
     console.error('Error processing request:', error);
-    return new Response(t('internalError'), { status: 500 });
+    return { status: 500, body: t('internalError') };
   }
 }
+
+// Express路由处理
+app.all('*', async (req, res) => {
+  // 构造Request对象
+  const protocol = req.secure ? 'https' : 'http';
+  const host = req.get('host');
+  const fullUrl = `${protocol}://${host}${req.originalUrl}`;
+  
+  const request = {
+    method: req.method,
+    url: fullUrl,
+    headers: {
+      get: (name) => req.get(name),
+      'accept-language': req.get('accept-language')
+    }
+  };
+
+  const result = await handleRequest(request);
+  
+  if (result.redirect) {
+    res.redirect(result.status, result.redirect);
+  } else {
+    res.status(result.status);
+    if (result.headers) {
+      Object.entries(result.headers).forEach(([key, value]) => {
+        res.set(key, value);
+      });
+    }
+    res.send(result.body);
+  }
+});
+
+// POST /config 路由
+app.post('/config', async (req, res) => {
+  try {
+    const { type, content } = req.body;
+    const configId = `${type}_${GenerateWebPath(8)}`;
+
+    let configString;
+    if (type === 'clash') {
+      // 如果是 YAML 格式，先转换为 JSON
+      if (typeof content === 'string' && (content.trim().startsWith('-') || content.includes(':'))) {
+        const yamlConfig = yaml.load(content);
+        configString = JSON.stringify(yamlConfig);
+      } else {
+        configString = typeof content === 'object'
+          ? JSON.stringify(content)
+          : content;
+      }
+    } else {
+      // singbox 配置处理
+      configString = typeof content === 'object'
+        ? JSON.stringify(content)
+        : content;
+    }
+
+    // 验证 JSON 格式
+    JSON.parse(configString);
+
+    await SUBLINK_KV.put(configId, configString, {
+      expirationTtl: 60 * 60 * 24 * 30  // 30 days
+    });
+
+    res.set('Content-Type', 'text/plain');
+    res.send(configId);
+  } catch (error) {
+    console.error('Config validation error:', error);
+    res.status(400).set('Content-Type', 'text/plain');
+    res.send(t('invalidFormat') + error.message);
+  }
+});
+
+app.listen(port, () => {
+  console.log(`本地代理配置服务器已启动，访问 http://localhost:${port}`);
+  console.log(`Local proxy config server is running at http://localhost:${port}`);
+}); 

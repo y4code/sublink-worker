@@ -12,14 +12,12 @@
 
 ## 🚀 如何使用
 
-1.  克隆或下载此仓库。
-2.  直接在现代浏览器中打开 `index.html` 文件。
+- 克隆或下载此仓库, 在现代浏览器中打开 `index.html` 文件。
+- 或者访问 [yode.github.io/sublink-worker/](https://yode.github.io/sublink-worker/)
 
 ## 🛠️ 技术栈
 
-- HTML
-- CSS
-- JavaScript
+- HTML & CSS & JavaScript
 - [js-yaml](https://github.com/nodeca/js-yaml)
 
 <img width="1142" alt="image" src="https://github.com/user-attachments/assets/d1f81e7e-2645-4d48-9e5a-d7e9cee83446" />

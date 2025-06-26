@@ -1,142 +1,88 @@
-<div align="center">
-  <h1><b>Sublink Worker</b></h1>
-  <h5><i>Best Practice for Serverless Self-Deployed Subscription Conversion Tool</i></h5>
-  
-  <a href="https://trendshift.io/repositories/12291" target="_blank">
-    <img src="https://trendshift.io/api/badge/repositories/12291" alt="7Sageer%2Fsublink-worker | Trendshift" width="250" height="55"/>
-  </a>
-  
-  <!-- <p>
-    <a href="https://sublink-worker.sageer.me">https://sublink-worker.sageer.me</a>
-  </p> -->
-  <br>
+# Sublink Worker (Lite) - 轻量版
 
-  <p>
-    <a href="https://dash.cloudflare.com/?to=/:account/workers-and-pages/create">
-      <img src="https://deploy.workers.cloudflare.com/button" alt="Deploy to Cloudflare Workers"/>
-    </a>
-  </p>
-  
-  <p><a href="/docs/README_CN.md">中文文档</a></p>
-</div>
+一个轻量级的、纯后端的服务，用于将代理订阅链接转换为 Clash 兼容的 `proxies` 列表。
 
-## 🚀 Quick Start
+该项目经过精简，只执行一个核心功能：接收一个或多个代理 URL（如 VLESS、SS、Trojan 等），并返回一个为 Clash 配置文件格式化的 YAML `proxies` 列表。
 
-### Quick Deployment
-- Fork this project, click the `Deploy to Cloudflare` button above
-- Select your repository in the `Import Repository` section (you need to link your GitHub account)
-- Change the `Deploy Command` as follows, then select `Save and Deploy`
-``` bash
-npm run deploy
+## ✨ 特性
+
+- **轻量级**：没有用户界面，没有复杂的规则引擎。只有一个 API 端点。
+- **专注 Clash**: 生成可直接插入 Clash 配置文件的 YAML `proxies` 列表。
+- **多协议支持**：解析多种代理协议，包括 VLESS、VMess、Shadowsocks、Trojan 等。
+
+## 🚀 快速开始
+
+### 环境要求
+
+- [Node.js](https://nodejs.org/) (v18 或更高版本)
+- [Bun](https://bun.sh/) 或 npm/yarn 用于包管理
+
+### 安装
+
+1.  克隆仓库：
+    ```bash
+    git clone <repository_url>
+    cd sublink-worker
+    ```
+
+2.  安装依赖：
+    ```bash
+    # 使用 Bun
+    bun install
+
+    # 或使用 npm
+    npm install
+    ```
+
+### 运行服务
+
+您可以使用以下命令启动服务器：
+
+```bash
+# 使用 Bun
+bun start
+
+# 或使用 npm
+npm start
 ```
 
-## ✨ Features
+服务将在 `http://localhost:3000` 上启动。
 
-### Supported Protocols
-- ShadowSocks
-- VMess
-- VLESS
-- Hysteria2
-- Trojan
-- TUIC
+## 📖 API 用法
 
-### Core Features
-- Support for importing Base64 http/https subscription links and various protocol sharing URLs
-- Pure JavaScript + Cloudflare Worker implementation, one-click deployment, ready to use
-- Support for fixed/random short link generation (based on KV)
-- Light/Dark theme toggle
-- Flexible API, supporting script operations
-- Support for Chinese, English, and Persian languages
+服务器只提供一个端点：`POST /`。
 
-### Client Support
-- Sing-Box
-- Clash
-- Xray/V2Ray
+向此端点发送 `POST` 请求，请求正文中以纯文本形式包含代理 URL。每个 URL 应占一行。
 
-### Web Interface Features
-- User-friendly operation interface
-- Various predefined rule sets
-- Customizable policy groups for geo-site, geo-ip, ip-cidr, and domain-suffix
+### 示例
 
-## 📖 API Documentation
+以下是使用 `curl` 转换一个 VLESS Reality 链接的示例：
 
-For detailed API documentation, please refer to [APIDoc.md](/docs/APIDoc.md)
-
-### Main Endpoints
-- `/singbox` - Generate Sing-Box configuration
-- `/clash` - Generate Clash configuration
-- `/xray` - Generate Xray configuration
-- `/shorten` - Generate short links
-
-## 📝 Recent Updates
-
-### 2025-05-02
-
-- Automatic renaming is now applied when proxies with the same name exist ([#175](https://github.com/7Sageer/sublink-worker/pull/175))
-- Fixed DNS configuration for Singbox ([#174](https://github.com/7Sageer/sublink-worker/pull/174))
-
-## 🔧 Project Structure
-
-```
-.
-├── index.js                 # Main server logic, handles request routing
-├── BaseConfigBuilder.js     # Build base configuration
-├── SingboxConfigBuilder.js  # Build Sing-Box configuration
-├── ClashConfigBuilder.js    # Build Clash configuration
-├── ProxyParsers.js          # Parse URLs of various proxy protocols
-├── utils.js                 # Provide various utility functions
-├── htmlBuilder.js           # Generate Web interface
-├── style.js                 # Generate CSS for Web interface
-├── config.js                # Store configuration information
-└── docs/
-    ├── APIDoc.md            # API documentation
-    ├── UpdateLogs.md        # Update logs
-    ├── FAQ.md               # Frequently asked questions
-    └── BaseConfig.md        # Basic configuration feature introduction
+```bash
+curl --request POST 'http://localhost:3000/' \
+--header 'Content-Type: text/plain' \
+--data 'vless://a7a5a8f5-a8f8-4a4b-a2a1-e4a8d4a4a4a4@example.com:443?type=tcp&security=reality&pbk=abcdef&fp=chrome&sni=example.com&sid=1234abcd#VLESS-Reality'
 ```
 
-## 🤝 Contribution
+### 成功响应
 
-Issues and Pull Requests are welcome to improve this project.
+服务器将以 `200 OK` 状态响应，并在响应体中返回 YAML 格式的代理列表，例如：
 
-## 📄 License
+```yaml
+proxies:
+  - name: VLESS-Reality
+    type: vless
+    server: example.com
+    port: 443
+    uuid: a7a5a8f5-a8f8-4a4b-a2a1-e4a8d4a4a4a4
+    tls: true
+    client-fingerprint: chrome
+    servername: example.com
+    network: tcp
+    reality-opts:
+      public-key: abcdef
+      short-id: 1234abcd
+    tfo: false
+    skip-cert-verify: false
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## ⚠️ Disclaimer
-
-This project is for learning and exchange purposes only. Please do not use it for illegal purposes. All consequences resulting from the use of this project are solely the responsibility of the user and are not related to the developer.
-
-## 💰 Sponsorship
-
-<div align="center">
-  <h3>Thanks to the following sponsors for their support of this project</h3>
-<table border="0">
-  <tr>
-    <td>
-      <a href="https://yxvm.com/" target="_blank" title="YXVM">
-        <img src="https://image.779477.xyz/yxvm.png" alt="YXVM" height="60" hspace="20"/>
-      </a>
-    </td>
-    <td>
-      <a href="https://github.com/NodeSeekDev/NodeSupport" target="_blank" title="NodeSupport">
-        <img src="https://image.779477.xyz/ns.png" alt="NodeSupport" height="60" hspace="20"/>
-      </a>
-    </td>
-  </tr>
-</table>
-  <p><b>NodeSupport has sponsored this project, thank you for your support!</b></p>
-  <p>If you would like to sponsor this project, please contact the developer <a href="https://github.com/7Sageer" style="text-decoration: none;">@7Sageer</a></p>
-</div>
-
-## ⭐ Star History
-
-Thanks to everyone who has starred this project! 🌟
-
-<a href="https://star-history.com/#7Sageer/sublink-worker&Date">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=7Sageer/sublink-worker&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=7Sageer/sublink-worker&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=7Sageer/sublink-worker&type=Date" />
- </picture>
-</a>
+```

@@ -1,6 +1,5 @@
 import { parseServerInfo, parseUrlParams, createTlsConfig, createTransportConfig, decodeBase64, base64ToBinary } from './utils.js';
 
-
 export class ProxyParser {
 	static parse(url, userAgent) {
 		url = url.trim();

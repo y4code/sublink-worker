@@ -1,28 +1,3 @@
-const PATH_LENGTH = 7;
-
-// 自定义的字符串前缀检查函数
-export function checkStartsWith(str, prefix) {
-  if (str === undefined || str === null || prefix === undefined || prefix === null) {
-    return false;
-  }
-  str = String(str);
-  prefix = String(prefix);
-  return str.slice(0, prefix.length) === prefix;
-}
-
-
-// Base64 编码函数
-export function encodeBase64(input) {
-	const encoder = new TextEncoder();
-	const utf8Array = encoder.encode(input);
-	let binaryString = '';
-	for (const byte of utf8Array) {
-		binaryString += String.fromCharCode(byte);
-	}
-	return base64FromBinary(binaryString);
-}
-
-// Base64 解码函数
 export function decodeBase64(input) {
 	const binaryString = base64ToBinary(input);
 	const bytes = new Uint8Array(binaryString.length);
@@ -31,38 +6,6 @@ export function decodeBase64(input) {
 	}
 	const decoder = new TextDecoder();
 	return decoder.decode(bytes);
-}
-
-// 将二进制字符串转换为 Base64（编码）
-export function base64FromBinary(binaryString) {
-	const base64Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-	let base64String = '';
-	let padding = '';
-
-	const remainder = binaryString.length % 3;
-	if (remainder > 0) {
-		padding = '='.repeat(3 - remainder);
-		binaryString += '\0'.repeat(3 - remainder);
-	}
-
-	for (let i = 0; i < binaryString.length; i += 3) {
-		const bytes = [
-			binaryString.charCodeAt(i),
-			binaryString.charCodeAt(i + 1),
-			binaryString.charCodeAt(i + 2)
-		];
-		const base64Index1 = bytes[0] >> 2;
-		const base64Index2 = ((bytes[0] & 3) << 4) | (bytes[1] >> 4);
-		const base64Index3 = ((bytes[1] & 15) << 2) | (bytes[2] >> 6);
-		const base64Index4 = bytes[2] & 63;
-
-		base64String += base64Chars[base64Index1] +
-			base64Chars[base64Index2] +
-			base64Chars[base64Index3] +
-			base64Chars[base64Index4];
-	}
-
-	return base64String.slice(0, base64String.length - padding.length) + padding;
 }
 
 // 将 Base64 转换为二进制字符串（解码）
@@ -89,6 +32,7 @@ export function base64ToBinary(base64String) {
 
 	return binaryString;
 }
+
 export function DeepCopy(obj) {
 	if (obj === null || typeof obj !== 'object') {
 		return obj;

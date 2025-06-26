@@ -1,22 +1,16 @@
 import { ProxyParser } from './ProxyParsers.js';
 import { DeepCopy, decodeBase64 } from './utils.js';
-import { t, setLanguage } from './i18n/index.js';
-import { generateRules, getOutbounds, PREDEFINED_RULE_SETS } from './config.js';
 
 export class BaseConfigBuilder {
-    constructor(inputString, baseConfig, lang, userAgent) {
+    constructor(inputString, baseConfig, userAgent) {
         this.inputString = inputString;
         this.config = DeepCopy(baseConfig);
-        this.customRules = [];
-        this.selectedRules = [];
-        setLanguage(lang);
         this.userAgent = userAgent;
     }
 
     async build() {
         const customItems = await this.parseCustomItems();
         this.addCustomItems(customItems);
-        this.addSelectors();
         return this.formatConfig();
     }
 
@@ -83,28 +77,8 @@ export class BaseConfigBuilder {
         return str;
     }
 
-    getOutboundsList() {
-        let outbounds;
-        if (typeof this.selectedRules === 'string' && PREDEFINED_RULE_SETS[this.selectedRules]) {
-            outbounds = getOutbounds(PREDEFINED_RULE_SETS[this.selectedRules]);
-        } else if (this.selectedRules && Object.keys(this.selectedRules).length > 0) {
-            outbounds = getOutbounds(this.selectedRules);
-        } else {
-            outbounds = getOutbounds(PREDEFINED_RULE_SETS.minimal);
-        }
-        return outbounds;
-    }
-
-    getProxyList() {
-        return this.getProxies().map(proxy => this.getProxyName(proxy));
-    }
-
     getProxies() {
         throw new Error('getProxies must be implemented in child class');
-    }
-
-    getProxyName(proxy) {
-        throw new Error('getProxyName must be implemented in child class');
     }
 
     convertProxy(proxy) {
@@ -113,26 +87,6 @@ export class BaseConfigBuilder {
 
     addProxyToConfig(proxy) {
         throw new Error('addProxyToConfig must be implemented in child class');
-    }
-
-    addAutoSelectGroup(proxyList) {
-        throw new Error('addAutoSelectGroup must be implemented in child class');
-    }
-
-    addNodeSelectGroup(proxyList) {
-        throw new Error('addNodeSelectGroup must be implemented in child class');
-    }
-
-    addOutboundGroups(outbounds, proxyList) {
-        throw new Error('addOutboundGroups must be implemented in child class');
-    }
-
-    addCustomRuleGroups(proxyList) {
-        throw new Error('addCustomRuleGroups must be implemented in child class');
-    }
-
-    addFallBackGroup(proxyList) {
-        throw new Error('addFallBackGroup must be implemented in child class');
     }
 
     addCustomItems(customItems) {
@@ -145,21 +99,6 @@ export class BaseConfigBuilder {
                 }
             }
         });
-    }
-
-    addSelectors() {
-        const outbounds = this.getOutboundsList();
-        const proxyList = this.getProxyList();
-
-        this.addAutoSelectGroup(proxyList);
-        this.addNodeSelectGroup(proxyList);
-        this.addOutboundGroups(outbounds, proxyList);
-        this.addCustomRuleGroups(proxyList);
-        this.addFallBackGroup(proxyList);
-    }
-
-    generateRules() {
-        return generateRules(this.selectedRules, this.customRules);
     }
 
     formatConfig() {

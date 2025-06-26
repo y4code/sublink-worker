@@ -1,17 +1,10 @@
 import yaml from 'js-yaml';
-import { CLASH_CONFIG, generateRules, generateClashRuleSets, getOutbounds, PREDEFINED_RULE_SETS } from './config.js';
 import { BaseConfigBuilder } from './BaseConfigBuilder.js';
-import { DeepCopy } from './utils.js';
-import { t } from './i18n/index.js';
 
 export class ClashConfigBuilder extends BaseConfigBuilder {
-    constructor(inputString, selectedRules, customRules, baseConfig, lang, userAgent) {
-        if (!baseConfig) {
-            baseConfig = CLASH_CONFIG;
-        }
-        super(inputString, baseConfig, lang, userAgent);
-        this.selectedRules = selectedRules;
-        this.customRules = customRules;
+    constructor(inputString, userAgent) {
+        const baseConfig = { proxies: [] };
+        super(inputString, baseConfig, userAgent);
     }
 
     getProxies() {
@@ -167,112 +160,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
         this.config.proxies.push(proxy);
     }
 
-    addAutoSelectGroup(proxyList) {
-        this.config['proxy-groups'] = this.config['proxy-groups'] || [];
-        this.config['proxy-groups'].push({
-            name: t('outboundNames.Auto Select'),
-            type: 'url-test',
-            proxies: DeepCopy(proxyList),
-            url: 'https://www.gstatic.com/generate_204',
-            interval: 300,
-            lazy: false
-        });
-    }
-
-    addNodeSelectGroup(proxyList) {
-        proxyList.unshift('DIRECT', 'REJECT', t('outboundNames.Auto Select'));
-        this.config['proxy-groups'].unshift({
-            type: "select",
-            name: t('outboundNames.Node Select'),
-            proxies: proxyList
-        });
-    }
-
-    addOutboundGroups(outbounds, proxyList) {
-        outbounds.forEach(outbound => {
-            if (outbound !== t('outboundNames.Node Select')) {
-                this.config['proxy-groups'].push({
-                    type: "select",
-                    name: t(`outboundNames.${outbound}`),
-                    proxies: [t('outboundNames.Node Select'), ...proxyList]
-                });
-            }
-        });
-    }
-
-    addCustomRuleGroups(proxyList) {
-        if (Array.isArray(this.customRules)) {
-            this.customRules.forEach(rule => {
-                this.config['proxy-groups'].push({
-                    type: "select",
-                    name: t(`outboundNames.${rule.name}`),
-                    proxies: [t('outboundNames.Node Select'), ...proxyList]
-                });
-            });
-        }
-    }
-
-    addFallBackGroup(proxyList) {
-        this.config['proxy-groups'].push({
-            type: "select",
-            name: t('outboundNames.Fall Back'),
-            proxies: [t('outboundNames.Node Select'), ...proxyList]
-        });
-    }
-
-    // 生成规则
-    generateRules() {
-        return generateRules(this.selectedRules, this.customRules);
-    }
-
     formatConfig() {
-        const rules = this.generateRules();
-        const ruleResults = [];
-        
-        // 获取.mrs规则集配置
-        const { site_rule_providers, ip_rule_providers } = generateClashRuleSets(this.selectedRules, this.customRules);
-        
-        // 添加规则集提供者
-        this.config['rule-providers'] = {
-            ...site_rule_providers,
-            ...ip_rule_providers
-        };
-
-        // 使用RULE-SET规则格式替代原有的GEOSITE/GEOIP
-        // Rule-Set & Domain-Set:  To reduce DNS leaks and unnecessary DNS queries,
-        // domain & non-IP rules must precede IP rules
-
-        rules.filter(rule => !!rule.domain_suffix || !!rule.domain_keyword).map(rule => {
-            rule.domain_suffix.forEach(suffix => {
-                ruleResults.push(`DOMAIN-SUFFIX,${suffix},${t('outboundNames.'+ rule.outbound)}`);
-            });
-            rule.domain_keyword.forEach(keyword => {
-                ruleResults.push(`DOMAIN-KEYWORD,${keyword},${t('outboundNames.'+ rule.outbound)}`);
-            });
-        });
-
-        rules.filter(rule => !!rule.site_rules[0]).map(rule => {
-            rule.site_rules.forEach(site => {
-                ruleResults.push(`RULE-SET,${site},${t('outboundNames.'+ rule.outbound)}`);
-            });
-        });
-
-        rules.filter(rule => !!rule.ip_rules[0]).map(rule => {
-            rule.ip_rules.forEach(ip => {
-                ruleResults.push(`RULE-SET,${ip},${t('outboundNames.'+ rule.outbound)},no-resolve`);
-            });
-        });
-
-        rules.filter(rule => !!rule.ip_cidr).map(rule => {
-            rule.ip_cidr.forEach(cidr => {
-                ruleResults.push(`IP-CIDR,${cidr},${t('outboundNames.'+ rule.outbound)},no-resolve`);
-            });
-        });
-
-        this.config.rules = [...ruleResults]
-
-        this.config.rules.push(`MATCH,${t('outboundNames.Fall Back')}`);
-
-        return yaml.dump(this.config);
+        return yaml.dump({ proxies: this.config.proxies });
     }
 }

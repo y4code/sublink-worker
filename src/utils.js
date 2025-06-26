@@ -1,4 +1,4 @@
-export function decodeBase64(input) {
+function decodeBase64(input) {
 	const binaryString = base64ToBinary(input);
 	const bytes = new Uint8Array(binaryString.length);
 	for (let i = 0; i < binaryString.length; i++) {
@@ -9,7 +9,7 @@ export function decodeBase64(input) {
 }
 
 // 将 Base64 转换为二进制字符串（解码）
-export function base64ToBinary(base64String) {
+function base64ToBinary(base64String) {
 	const base64Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 	let binaryString = '';
 	base64String = base64String.replace(/=+$/, ''); // 去掉末尾的 '='
@@ -33,7 +33,7 @@ export function base64ToBinary(base64String) {
 	return binaryString;
 }
 
-export function DeepCopy(obj) {
+function DeepCopy(obj) {
 	if (obj === null || typeof obj !== 'object') {
 		return obj;
 	}
@@ -49,7 +49,7 @@ export function DeepCopy(obj) {
 	return newObj;
 }
 
-export function GenerateWebPath(length = PATH_LENGTH) {
+function GenerateWebPath(length = PATH_LENGTH) {
 	const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
 	let result = ''
 	for (let i = 0; i < length; i++) {
@@ -58,7 +58,7 @@ export function GenerateWebPath(length = PATH_LENGTH) {
 	return result
 }
 
-export function parseServerInfo(serverInfo) {
+function parseServerInfo(serverInfo) {
 	let host, port;
 	if (serverInfo.startsWith('[')) {
 	  const closeBracketIndex = serverInfo.indexOf(']');
@@ -72,7 +72,7 @@ export function parseServerInfo(serverInfo) {
 	return { host, port: parseInt(port) };
   }
   
-  export function parseUrlParams(url) {
+  function parseUrlParams(url) {
 	const [, rest] = url.split('://');
 	const [addressPart, ...remainingParts] = rest.split('?');
 	const paramsPart = remainingParts.join('?');
@@ -89,7 +89,7 @@ export function parseServerInfo(serverInfo) {
 	return { addressPart, params, name };
   }
   
-  export function createTlsConfig(params) {
+  function createTlsConfig(params) {
 	let tls = { enabled: false };
 	if (params.security != 'none') {
 	  tls = {
@@ -112,7 +112,7 @@ export function parseServerInfo(serverInfo) {
 	return tls;
   }
 
-export function createTransportConfig(params) {
+function createTransportConfig(params) {
 	return {
 		type: params.type,
 		path: params.path ?? undefined,

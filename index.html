@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sublink Worker - 前端版</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            width: 90%;
+            max-width: 800px;
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #1a1a1a;
+            margin-bottom: 1.5rem;
+        }
+        textarea, pre {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid #dcdfe6;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+            font-family: 'Menlo', 'Consolas', monospace;
+        }
+        textarea {
+            height: 200px;
+            margin-bottom: 1rem;
+            resize: vertical;
+        }
+        pre {
+            min-height: 200px;
+            background-color: #f9fafb;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #475569;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 0.8rem;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-bottom: 1rem;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #a0cfff;
+            cursor: not-allowed;
+        }
+        .error {
+            color: #d9534f;
+            text-align: center;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sublink Worker (前端版)</h1>
+        <textarea id="inputLinks" placeholder="在此处粘贴一个或多个代理/订阅链接，每行一个..."></textarea>
+        <button id="convertButton">转换</button>
+        <pre id="outputConfig"><code>转换后的 Clash 配置将显示在这里...</code></pre>
+        <p id="errorMessage" class="error"></p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+    <script src="./src/utils.js"></script>
+    <script src="./src/ProxyParsers.js"></script>
+    <script src="./src/BaseConfigBuilder.js"></script>
+    <script src="./src/ClashConfigBuilder.js"></script>
+    <script src="./main.js"></script>
+</body>
+</html> 

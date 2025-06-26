@@ -1,7 +1,4 @@
-import yaml from 'js-yaml';
-import { BaseConfigBuilder } from './BaseConfigBuilder.js';
-
-export class ClashConfigBuilder extends BaseConfigBuilder {
+class ClashConfigBuilder extends BaseConfigBuilder {
     constructor(inputString, userAgent) {
         const baseConfig = { proxies: [] };
         super(inputString, baseConfig, userAgent);
@@ -161,6 +158,6 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
     }
 
     formatConfig() {
-        return yaml.dump({ proxies: this.config.proxies });
+        return jsyaml.dump({ proxies: this.config.proxies });
     }
 }

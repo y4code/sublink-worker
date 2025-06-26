@@ -1,20 +1,17 @@
-import { ProxyParser } from './ProxyParsers.js';
-import { DeepCopy, decodeBase64 } from './utils.js';
-
-export class BaseConfigBuilder {
+class BaseConfigBuilder {
     constructor(inputString, baseConfig, userAgent) {
         this.inputString = inputString;
         this.config = DeepCopy(baseConfig);
         this.userAgent = userAgent;
     }
 
-    async build() {
-        const customItems = await this.parseCustomItems();
+    build() {
+        const customItems = this.parseCustomItems();
         this.addCustomItems(customItems);
         return this.formatConfig();
     }
 
-    async parseCustomItems() {
+    parseCustomItems() {
         const urls = this.inputString.split('\n').filter(url => url.trim() !== '');
         const parsedItems = [];
         
@@ -29,10 +26,10 @@ export class BaseConfigBuilder {
 
             // Handle multiple URLs from a single base64 string
             for (const processedUrl of processedUrls) {
-                const result = await ProxyParser.parse(processedUrl, this.userAgent);
+                const result = ProxyParser.parse(processedUrl, this.userAgent);
                 if (Array.isArray(result)) {
                     for (const subUrl of result) {
-                        const subResult = await ProxyParser.parse(subUrl, this.userAgent);
+                        const subResult = ProxyParser.parse(subUrl, this.userAgent);
                         if (subResult) {
                             parsedItems.push(subResult);
                         }

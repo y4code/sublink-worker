@@ -13,7 +13,7 @@
 ## 🚀 如何使用
 
 - 克隆或下载此仓库, 在现代浏览器中打开 `index.html` 文件。
-- 或者访问 [yode.github.io/sublink-worker/](https://yode.github.io/sublink-worker/)
+- 或者访问 [y4code.github.io/sublink-worker/](https://y4code.github.io/sublink-worker/)
 
 ## 🛠️ 技术栈
 
